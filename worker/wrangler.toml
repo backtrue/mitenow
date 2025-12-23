@@ -1,0 +1,118 @@
+# mite.now - Cloudflare Worker Configuration
+# https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "mite-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
+
+# ============================================
+# KV Namespace Bindings
+# ============================================
+[[kv_namespaces]]
+binding = "MITE_KV"
+id = "8be60d952ea14984930f995d2d6dc359"
+preview_id = "68df4734781845c48c171c290ce0e2f3"
+
+# ============================================
+# R2 Bucket Binding
+# ============================================
+[[r2_buckets]]
+binding = "MITE_BUCKET"
+bucket_name = "mite-uploads"
+preview_bucket_name = "mite-uploads"
+
+# ============================================
+# Static Assets (for main site)
+# ============================================
+# [site]
+# bucket = "../frontend/out"  # Next.js static export
+
+# ============================================
+# Environment Variables (non-secret)
+# ============================================
+[vars]
+GCP_REGION = "asia-east1"
+ALLOWED_ORIGINS = "https://mite.now,https://www.mite.now,http://localhost:3000"
+
+# ============================================
+# Secrets (set via `wrangler secret put`)
+# ============================================
+# Run these commands to set secrets:
+# wrangler secret put GCP_PROJECT_ID
+# wrangler secret put GCP_SERVICE_ACCOUNT_KEY
+# wrangler secret put API_SECRET_KEY
+
+# ============================================
+# Workers.dev subdomain (keep enabled for fallback)
+# ============================================
+workers_dev = true
+
+# ============================================
+# Custom Domain Routes
+# ============================================
+[[routes]]
+pattern = "api.mite.now/*"
+zone_name = "mite.now"
+
+[[routes]]
+pattern = "*.mite.now/*"
+zone_name = "mite.now"
+
+[[routes]]
+pattern = "mite.now/*"
+zone_name = "mite.now"
+
+# ============================================
+# Staging Environment
+# ============================================
+[env.staging]
+name = "mite-worker-staging"
+vars = { ALLOWED_ORIGINS = "https://staging.mite.now,http://localhost:3000" }
+
+[[env.staging.kv_namespaces]]
+binding = "MITE_KV"
+id = "YOUR_STAGING_KV_ID"
+
+[[env.staging.r2_buckets]]
+binding = "MITE_BUCKET"
+bucket_name = "mite-uploads-staging"
+
+# ============================================
+# Production Environment
+# ============================================
+[env.production]
+name = "mite-worker-production"
+vars = { ALLOWED_ORIGINS = "https://mite.now,https://www.mite.now" }
+
+[[env.production.kv_namespaces]]
+binding = "MITE_KV"
+id = "YOUR_PRODUCTION_KV_ID"
+
+[[env.production.r2_buckets]]
+binding = "MITE_BUCKET"
+bucket_name = "mite-uploads"
+
+# ============================================
+# Cron Triggers (for cleanup jobs)
+# ============================================
+# [triggers]
+# crons = ["0 0 * * *"]  # Daily cleanup at midnight UTC
+
+# ============================================
+# Durable Objects (future use)
+# ============================================
+# [[durable_objects.bindings]]
+# name = "BUILD_TRACKER"
+# class_name = "BuildTracker"
+
+# ============================================
+# Analytics Engine (optional)
+# ============================================
+# [[analytics_engine_datasets]]
+# binding = "MITE_ANALYTICS"

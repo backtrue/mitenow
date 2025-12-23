@@ -1,0 +1,152 @@
+# Cloud Build configuration for Gradio applications
+# This file is used as a template - actual builds are triggered via API
+
+substitutions:
+  _APP_ID: ''
+  _SUBDOMAIN: ''
+  _REGION: 'asia-east1'
+  _GEMINI_API_KEY: ''
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '600s'
+
+steps:
+  # Step 1: Download source from GCS
+  - name: 'gcr.io/cloud-builders/gsutil'
+    id: 'download-source'
+    args:
+      - 'cp'
+      - 'gs://mite-uploads/${_APP_ID}/source.zip'
+      - '/workspace/source.zip'
+
+  # Step 2: Extract ZIP file
+  - name: 'ubuntu'
+    id: 'extract-zip'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        apt-get update && apt-get install -y unzip
+        mkdir -p /workspace/app
+        unzip /workspace/source.zip -d /workspace/app
+        # Handle nested directory (if ZIP contains a root folder)
+        if [ $(ls -1 /workspace/app | wc -l) -eq 1 ] && [ -d "/workspace/app/$(ls /workspace/app)" ]; then
+          mv /workspace/app/*/* /workspace/app/ 2>/dev/null || true
+        fi
+        ls -la /workspace/app
+    waitFor: ['download-source']
+
+  # Step 3: Inject Dockerfile for Gradio
+  - name: 'ubuntu'
+    id: 'inject-dockerfile'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cat > /workspace/app/Dockerfile << 'EOF'
+        FROM python:3.11-slim
+
+        WORKDIR /app
+
+        # Install system dependencies
+        RUN apt-get update && apt-get install -y --no-install-recommends \
+            build-essential \
+            curl \
+            && rm -rf /var/lib/apt/lists/*
+
+        # Copy requirements first for better caching
+        COPY requirements.txt .
+        RUN pip install --no-cache-dir -r requirements.txt
+
+        # Copy application code
+        COPY . .
+
+        # Expose port
+        EXPOSE 8080
+
+        # Environment variables for Gradio
+        ENV GRADIO_SERVER_NAME="0.0.0.0"
+        ENV GRADIO_SERVER_PORT=8080
+
+        # Run application
+        CMD ["python", "app.py"]
+        EOF
+    waitFor: ['extract-zip']
+
+  # Step 4: Ensure requirements.txt exists
+  - name: 'ubuntu'
+    id: 'ensure-requirements'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ ! -f /workspace/app/requirements.txt ]; then
+          cat > /workspace/app/requirements.txt << 'EOF'
+        gradio>=4.0.0
+        google-generativeai>=0.3.0
+        python-dotenv>=1.0.0
+        EOF
+        fi
+        # Ensure gradio is in requirements
+        if ! grep -qi "gradio" /workspace/app/requirements.txt; then
+          echo "gradio>=4.0.0" >> /workspace/app/requirements.txt
+        fi
+        cat /workspace/app/requirements.txt
+    waitFor: ['extract-zip']
+
+  # Step 5: Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/mite-apps/${_SUBDOMAIN}:latest'
+      - '/workspace/app'
+    waitFor: ['inject-dockerfile', 'ensure-requirements']
+
+  # Step 6: Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/mite-apps/${_SUBDOMAIN}:latest'
+    waitFor: ['build-image']
+
+  # Step 7: Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-cloudrun'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SUBDOMAIN}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/mite-apps/${_SUBDOMAIN}:latest'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '3'
+      - '--timeout'
+      - '300'
+      - '--set-env-vars'
+      - 'GOOGLE_API_KEY=${_GEMINI_API_KEY}'
+      - '--port'
+      - '8080'
+      - '--execution-environment'
+      - 'gen2'
+    waitFor: ['push-image']
+
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/mite-apps/${_SUBDOMAIN}:latest'
