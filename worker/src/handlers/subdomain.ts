@@ -9,8 +9,10 @@ import { ApiError } from '../types';
 import { 
   checkSubdomainAvailability, 
   releaseStaleSubdomain,
+  canUserReleaseSubdomain,
   SubdomainCheckResult 
 } from '../utils/kv';
+import { getCurrentUser } from './auth';
 
 // Subdomain validation regex
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -77,24 +79,29 @@ export async function handleSubdomainRelease(
   if (request.method !== 'POST') {
     throw new ApiError(405, 'Method not allowed');
   }
-
-  const normalizedSubdomain = subdomain.toLowerCase();
   
-  // Validate subdomain format
-  if (!SUBDOMAIN_REGEX.test(normalizedSubdomain)) {
-    throw new ApiError(400, 'Invalid subdomain format');
+  // Get current user (optional - anonymous users can release after cooldown)
+  const user = await getCurrentUser(request, env);
+  const userId = user?.id;
+  
+  // Check if user can release this subdomain
+  if (userId) {
+    const canRelease = await canUserReleaseSubdomain(env, subdomain, userId);
+    if (!canRelease.canRelease) {
+      throw new ApiError(403, canRelease.reason || 'Cannot release this subdomain');
+    }
   }
-
-  const released = await releaseStaleSubdomain(env, normalizedSubdomain);
+  
+  const released = await releaseStaleSubdomain(env, subdomain, userId);
   
   if (!released) {
-    throw new ApiError(409, 'Subdomain cannot be released - it is either in active use or reserved');
+    throw new ApiError(400, 'Subdomain cannot be released. It may be active or not exist.');
   }
-
+  
   return new Response(JSON.stringify({
     success: true,
-    subdomain: normalizedSubdomain,
-    message: 'Subdomain has been released and is now available'
+    subdomain,
+    message: 'Subdomain released successfully'
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' }

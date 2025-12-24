@@ -1,5 +1,5 @@
 import { HomePage } from '@/components/HomePage';
 
-export default function Home() {
+export default function JpHome() {
   return <HomePage />;
 }

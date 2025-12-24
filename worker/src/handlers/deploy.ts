@@ -12,6 +12,7 @@ import {
   isSubdomainAvailable 
 } from '../utils/kv';
 import { triggerCloudBuild } from '../utils/cloud-build';
+import { storeUserApiKey, deleteUserApiKey } from '../utils/secret-manager';
 import { transferR2ToGcs } from '../utils/gcs';
 import { analyzeAppFramework } from '../utils/framework-detector';
 
@@ -94,15 +95,18 @@ export async function handleDeploy(
       framework: analysis.framework
     });
     
-    // Trigger Cloud Build
-    // IMPORTANT: API key is passed directly to Cloud Build and set as env var
-    // It is NOT stored in KV or any persistent storage
+    // Store API key securely in Secret Manager
+    console.log(`Storing API key in Secret Manager for ${body.app_id}`);
+    const secretResourceName = await storeUserApiKey(env, body.app_id, body.api_key);
+    
+    // Trigger Cloud Build with Secret Manager reference
+    // API key is now stored securely and referenced by Cloud Run
     const buildResponse = await triggerCloudBuild(
       env,
       body.app_id,
       subdomain,
       analysis,
-      body.api_key // Passed transiently, not stored
+      secretResourceName
     );
     
     // Extract build ID from response
@@ -128,6 +132,13 @@ export async function handleDeploy(
     });
     
   } catch (error) {
+    // Clean up: delete the stored API key on failure
+    try {
+      await deleteUserApiKey(env, body.app_id);
+    } catch (cleanupError) {
+      console.error('Failed to cleanup API key:', cleanupError);
+    }
+    
     // Update status to failed
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     await updateAppStatus(env, body.app_id, 'failed', {

@@ -28,6 +28,14 @@ bucket_name = "mite-uploads"
 preview_bucket_name = "mite-uploads"
 
 # ============================================
+# D1 Database Binding
+# ============================================
+[[d1_databases]]
+binding = "DB"
+database_name = "mite-db"
+database_id = "d571adef-dd2b-4a70-8d2f-c13c1fc345e0"
+
+# ============================================
 # Static Assets (for main site)
 # ============================================
 # [site]
@@ -39,6 +47,7 @@ preview_bucket_name = "mite-uploads"
 [vars]
 GCP_REGION = "asia-east1"
 ALLOWED_ORIGINS = "https://mite.now,https://www.mite.now,http://localhost:3000"
+ENVIRONMENT = "production"
 
 # ============================================
 # Secrets (set via `wrangler secret put`)
@@ -47,6 +56,15 @@ ALLOWED_ORIGINS = "https://mite.now,https://www.mite.now,http://localhost:3000"
 # wrangler secret put GCP_PROJECT_ID
 # wrangler secret put GCP_SERVICE_ACCOUNT_KEY
 # wrangler secret put API_SECRET_KEY
+# wrangler secret put ADMIN_TOKEN
+# wrangler secret put GOOGLE_CLIENT_ID
+# wrangler secret put GOOGLE_CLIENT_SECRET
+# wrangler secret put STRIPE_SECRET_KEY
+# wrangler secret put STRIPE_PUBLISHABLE_KEY
+# wrangler secret put STRIPE_WEBHOOK_SECRET
+# wrangler secret put STRIPE_PRICE_ID_PRO
+# wrangler secret put STRIPE_PRICE_ID_QUOTA
+# wrangler secret put SENTRY_DSN
 
 # ============================================
 # Workers.dev subdomain (keep enabled for fallback)
@@ -101,8 +119,8 @@ bucket_name = "mite-uploads"
 # ============================================
 # Cron Triggers (for cleanup jobs)
 # ============================================
-# [triggers]
-# crons = ["0 0 * * *"]  # Daily cleanup at midnight UTC
+[triggers]
+crons = ["0 * * * *"]  # Hourly cleanup for expired deployments
 
 # ============================================
 # Durable Objects (future use)

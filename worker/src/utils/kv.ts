@@ -190,10 +190,12 @@ export async function deleteAppRecord(
 
 /**
  * Release a stale subdomain (failed/expired deployments)
+ * Now requires user verification and implements cooldown period
  */
 export async function releaseStaleSubdomain(
   env: Env,
-  subdomain: string
+  subdomain: string,
+  userId?: string
 ): Promise<boolean> {
   const check = await checkSubdomainAvailability(env, subdomain);
   
@@ -202,9 +204,33 @@ export async function releaseStaleSubdomain(
   }
   
   const appId = await env.MITE_KV.get(`${SUBDOMAIN_PREFIX}${subdomain}`);
-  if (appId) {
-    await deleteAppRecord(env, appId);
+  if (!appId) {
+    return false;
   }
+  
+  const record = await getAppRecord(env, appId);
+  if (!record) {
+    return false;
+  }
+  
+  // Check if user owns this deployment (if userId provided)
+  if (userId && record.user_id && record.user_id !== userId) {
+    // User doesn't own this deployment, check cooldown period
+    const cooldownHours = 24;
+    const cooldownMs = cooldownHours * 60 * 60 * 1000;
+    const timeSinceUpdate = Date.now() - new Date(record.updated_at).getTime();
+    
+    if (timeSinceUpdate < cooldownMs) {
+      // Still in cooldown period
+      return false;
+    }
+  }
+  
+  // Log the release for audit trail
+  await logSubdomainRelease(env, subdomain, appId, userId);
+  
+  // Delete the app record
+  await deleteAppRecord(env, appId);
   
   return true;
 }
@@ -233,4 +259,75 @@ export async function getRoutingInfo(
     appId: record.app_id,
     status: record.status
   };
+}
+
+/**
+ * Log subdomain release for audit trail
+ */
+async function logSubdomainRelease(
+  env: Env,
+  subdomain: string,
+  appId: string,
+  userId?: string
+): Promise<void> {
+  const logKey = `log:release:${subdomain}:${Date.now()}`;
+  const logData = {
+    subdomain,
+    appId,
+    userId: userId || 'anonymous',
+    timestamp: new Date().toISOString(),
+    action: 'release'
+  };
+  
+  // Store log for 90 days
+  await env.MITE_KV.put(
+    logKey,
+    JSON.stringify(logData),
+    { expirationTtl: 90 * 86400 }
+  );
+}
+
+/**
+ * Check if user can release a specific subdomain
+ */
+export async function canUserReleaseSubdomain(
+  env: Env,
+  subdomain: string,
+  userId: string
+): Promise<{ canRelease: boolean; reason?: string }> {
+  const check = await checkSubdomainAvailability(env, subdomain);
+  
+  if (!check.canRelease) {
+    return { canRelease: false, reason: 'Subdomain is not stale or failed' };
+  }
+  
+  const appId = await env.MITE_KV.get(`${SUBDOMAIN_PREFIX}${subdomain}`);
+  if (!appId) {
+    return { canRelease: true };
+  }
+  
+  const record = await getAppRecord(env, appId);
+  if (!record) {
+    return { canRelease: true };
+  }
+  
+  // If user owns the deployment, they can always release it
+  if (record.user_id === userId) {
+    return { canRelease: true };
+  }
+  
+  // Check cooldown period for non-owners
+  const cooldownHours = 24;
+  const cooldownMs = cooldownHours * 60 * 60 * 1000;
+  const timeSinceUpdate = Date.now() - new Date(record.updated_at).getTime();
+  
+  if (timeSinceUpdate < cooldownMs) {
+    const hoursRemaining = Math.ceil((cooldownMs - timeSinceUpdate) / (60 * 60 * 1000));
+    return { 
+      canRelease: false, 
+      reason: `Cooldown period active. ${hoursRemaining} hours remaining.` 
+    };
+  }
+  
+  return { canRelease: true };
 }

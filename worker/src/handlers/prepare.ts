@@ -6,6 +6,7 @@
 import type { Env, PrepareRequest, PrepareResponse } from '../types';
 import { ApiError } from '../types';
 import { generateAppId, generateUploadUrl } from '../utils/r2';
+import { validateZipFile } from '../utils/file-validator';
 
 export async function handlePrepare(
   request: Request,
@@ -90,19 +91,14 @@ export async function handleUpload(
   const contentType = request.headers.get('Content-Type') || 'application/zip';
   const fileBuffer = await request.arrayBuffer();
   
-  // Validate file size (max 50MB)
-  const maxSize = 50 * 1024 * 1024;
-  if (fileBuffer.byteLength > maxSize) {
-    throw new ApiError(413, 'File too large. Maximum size is 50MB');
-  }
-  
-  // Validate it's a ZIP file (check magic bytes)
-  const header = new Uint8Array(fileBuffer.slice(0, 4));
-  const zipMagic = [0x50, 0x4B, 0x03, 0x04]; // PK..
-  const isZip = zipMagic.every((byte, i) => header[i] === byte);
-  
-  if (!isZip) {
-    throw new ApiError(400, 'Invalid ZIP file format');
+  // Comprehensive security validation
+  try {
+    await validateZipFile(fileBuffer);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(400, 'File validation failed');
   }
   
   // Upload to R2

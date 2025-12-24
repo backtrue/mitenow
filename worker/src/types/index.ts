@@ -8,21 +8,44 @@
 export interface Env {
   // Cloudflare R2 Bucket
   MITE_BUCKET: R2Bucket;
-  
+
   // Cloudflare KV Namespace
   MITE_KV: KVNamespace;
-  
+
+  // Cloudflare D1 Database
+  DB: D1Database;
+
   // Static Assets (for main site)
   ASSETS: Fetcher;
-  
+
   // GCP Configuration
   GCP_PROJECT_ID: string;
   GCP_SERVICE_ACCOUNT_KEY: string; // Base64 encoded JSON key
   GCP_REGION: string;
-  
+
   // Security
   API_SECRET_KEY: string; // For signing internal tokens
   ALLOWED_ORIGINS: string; // Comma-separated origins
+
+  // Admin
+  ADMIN_TOKEN: string; // Token for admin API access
+
+  // Google OAuth
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+
+  // Stripe
+  STRIPE_SECRET_KEY: string;
+  STRIPE_PUBLISHABLE_KEY: string;
+  STRIPE_WEBHOOK_SECRET: string;
+  STRIPE_PRICE_ID_PRO: string;
+  STRIPE_PRICE_ID_QUOTA: string;
+
+  // Environment
+  ENVIRONMENT?: string; // 'production' | 'development'
+
+  // Monitoring
+  SENTRY_DSN?: string; // Sentry error tracking DSN
 }
 
 // ============================================
@@ -66,7 +89,7 @@ export interface StatusResponse {
 // ============================================
 // Deployment State
 // ============================================
-export type DeploymentStatus = 
+export type DeploymentStatus =
   | 'pending'      // ZIP uploaded, waiting for deploy trigger
   | 'uploading'    // Transferring to GCS
   | 'analyzing'    // Analyzing ZIP contents
@@ -87,12 +110,13 @@ export interface AppRecord {
   created_at: string;
   updated_at: string;
   expires_at?: string;
+  user_id?: string; // Owner of the deployment
 }
 
 // ============================================
 // Framework Detection
 // ============================================
-export type FrameworkType = 
+export type FrameworkType =
   | 'streamlit'  // Python - Streamlit apps
   | 'gradio'     // Python - Gradio ML interfaces
   | 'flask'      // Python - Flask web apps
@@ -177,6 +201,70 @@ export interface ServiceAccountKey {
   auth_provider_x509_cert_url: string;
   client_x509_cert_url: string;
 }
+
+// ============================================
+// User & Subscription Types
+// ============================================
+export type UserRole = 'super_admin' | 'user';
+export type SubscriptionTier = 'free' | 'pro';
+export type SubscriptionStatus = 'active' | 'canceled' | 'past_due';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  avatar_url: string | null;
+  role: UserRole;
+  subscription_tier: SubscriptionTier;
+  subscription_status: SubscriptionStatus;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  extra_quota_packs: number;
+  custom_domain: string | null;
+  custom_domain_verified: boolean;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface Session {
+  id: string;
+  user_id: string;
+  expires_at: number;
+  created_at: number;
+}
+
+export interface Deployment {
+  id: string;
+  user_id: string | null;
+  subdomain: string;
+  custom_domain: string | null;
+  framework: FrameworkType | null;
+  status: DeploymentStatus;
+  cloud_run_url: string | null;
+  has_database: boolean;
+  d1_database_id: string | null;
+  expires_at: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+// ============================================
+// Quota Types
+// ============================================
+export interface UserQuota {
+  max_deployments: number;
+  current_deployments: number;
+  remaining: number;
+  expires_in_hours: number | null; // For free users
+}
+
+export const QUOTA_LIMITS = {
+  free: 5,
+  pro: 10,
+  per_pack: 5,
+} as const;
+
+export const FREE_TTL_HOURS = 72;
 
 // ============================================
 // Error Types

@@ -301,7 +301,7 @@ export async function triggerCloudBuild(
   appId: string,
   subdomain: string,
   analysis: ZipAnalysisResult,
-  geminiApiKey: string
+  secretResourceName: string
 ): Promise<CloudBuildResponse> {
   // Get access token with full cloud-platform scope
   const accessToken = await generateGCPAccessToken(
@@ -325,7 +325,7 @@ export async function triggerCloudBuild(
     imageName,
     framework: analysis.framework,
     hasRequirements: analysis.has_requirements,
-    geminiApiKey
+    secretResourceName
   });
   
   // Submit build
@@ -357,7 +357,7 @@ interface BuildConfigParams {
   imageName: string;
   framework: FrameworkType;
   hasRequirements: boolean;
-  geminiApiKey: string;
+  secretResourceName: string;
 }
 
 /**
@@ -371,7 +371,7 @@ function createBuildConfig(params: BuildConfigParams): CloudBuildConfig {
     imageName,
     framework,
     hasRequirements,
-    geminiApiKey
+    secretResourceName
   } = params;
   
   // projectId is used in the caller for API endpoint, not needed here
@@ -446,7 +446,7 @@ REQUIREMENTS_EOF`
       waitFor: ['build-image']
     },
     
-    // Step 7: Deploy to Cloud Run
+    // Step 7: Deploy to Cloud Run with Secret Manager
     {
       name: 'gcr.io/google.com/cloudsdktool/cloud-sdk',
       entrypoint: 'gcloud',
@@ -460,7 +460,7 @@ REQUIREMENTS_EOF`
         '--min-instances', '0',
         '--max-instances', '3',
         '--timeout', '300',
-        '--set-env-vars', `GOOGLE_API_KEY=${geminiApiKey}`,
+        '--update-secrets', `GOOGLE_API_KEY=${secretResourceName}`,
         '--port', '8080',
         '--execution-environment', 'gen2'
       ],
