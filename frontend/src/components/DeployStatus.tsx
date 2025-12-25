@@ -69,10 +69,24 @@ export function DeployStatus({ appId, subdomain }: DeployStatusProps) {
         if (mounted) {
           setStatus(data);
           setError(null);
-          
+
           // Stop polling if deployment is complete or failed
           if (data.status === 'active' || data.status === 'failed') {
             clearInterval(intervalId);
+
+            // Redirect to share page on success (after generating praise)
+            if (data.status === 'active') {
+              try {
+                // Generate praise first, then redirect
+                console.log('Generating praise before redirect...');
+                await fetch(`/api/v1/praise/${appId}?locale=tw`);
+                console.log('Praise generated, redirecting...');
+              } catch (err) {
+                console.error('Failed to generate praise:', err);
+                // Still redirect even if praise fails
+              }
+              window.location.href = `/share?id=${appId}`;
+            }
           }
         }
       } catch (err) {

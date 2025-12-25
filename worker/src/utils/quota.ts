@@ -14,19 +14,19 @@ export async function getUserQuota(env: Env, userId: string): Promise<UserQuota>
   const user = await env.DB.prepare(
     'SELECT * FROM users WHERE id = ?'
   ).bind(userId).first<User>();
-  
+
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
-  
+
   // Count current deployments
   const countResult = await env.DB.prepare(
     'SELECT COUNT(*) as count FROM deployments WHERE user_id = ?'
   ).bind(userId).first<{ count: number }>();
-  
+
   const currentDeployments = countResult?.count || 0;
   const maxDeployments = calculateMaxDeployments(user);
-  
+
   return {
     max_deployments: maxDeployments,
     current_deployments: currentDeployments,
@@ -43,7 +43,7 @@ export async function canCreateDeployment(env: Env, userId: string | null): Prom
   if (!userId) {
     return true;
   }
-  
+
   const quota = await getUserQuota(env, userId);
   return quota.remaining > 0;
 }
@@ -55,9 +55,9 @@ export async function checkQuotaOrThrow(env: Env, userId: string | null): Promis
   if (!userId) {
     return; // Anonymous users bypass quota
   }
-  
+
   const quota = await getUserQuota(env, userId);
-  
+
   if (quota.remaining <= 0) {
     throw new ApiError(
       403,
@@ -74,7 +74,7 @@ export function calculateMaxDeployments(user: User): number {
   if (user.subscription_tier === 'free') {
     return QUOTA_LIMITS.free;
   }
-  
+
   // Pro: base + extra packs
   return QUOTA_LIMITS.pro + (user.extra_quota_packs * QUOTA_LIMITS.per_pack);
 }
@@ -87,7 +87,7 @@ export function calculateExpiresAt(user: User | null): number | null {
   if (!user || user.subscription_tier === 'free') {
     return Date.now() + (FREE_TTL_HOURS * 60 * 60 * 1000);
   }
-  
+
   // Pro users: no expiration
   return null;
 }
@@ -101,7 +101,7 @@ export async function getExpiringDeployments(
 ): Promise<Array<{ id: string; subdomain: string; user_id: string; expires_at: number }>> {
   const now = Date.now();
   const threshold = now + (hoursUntilExpiry * 60 * 60 * 1000);
-  
+
   const result = await env.DB.prepare(`
     SELECT id, subdomain, user_id, expires_at 
     FROM deployments 
@@ -109,7 +109,7 @@ export async function getExpiringDeployments(
       AND expires_at > ? 
       AND expires_at <= ?
   `).bind(now, threshold).all();
-  
+
   return result.results as Array<{ id: string; subdomain: string; user_id: string; expires_at: number }>;
 }
 
@@ -120,13 +120,13 @@ export async function getExpiredDeployments(
   env: Env
 ): Promise<Array<{ id: string; subdomain: string; cloud_run_url: string | null; d1_database_id: string | null }>> {
   const now = Date.now();
-  
+
   const result = await env.DB.prepare(`
     SELECT id, subdomain, cloud_run_url, d1_database_id 
     FROM deployments 
     WHERE expires_at IS NOT NULL AND expires_at <= ?
   `).bind(now).all();
-  
+
   return result.results as Array<{ id: string; subdomain: string; cloud_run_url: string | null; d1_database_id: string | null }>;
 }
 
@@ -153,7 +153,7 @@ export async function createDeploymentInD1(
   }
 ): Promise<void> {
   const now = Date.now();
-  
+
   // Get user to determine expiration
   let expiresAt: number | null = null;
   if (deployment.user_id) {
@@ -165,7 +165,7 @@ export async function createDeploymentInD1(
     // Anonymous: 72 hour TTL
     expiresAt = Date.now() + (FREE_TTL_HOURS * 60 * 60 * 1000);
   }
-  
+
   await env.DB.prepare(`
     INSERT INTO deployments (
       id, user_id, subdomain, framework, status, 
@@ -198,30 +198,47 @@ export async function updateDeploymentInD1(
 ): Promise<void> {
   const setClauses: string[] = ['updated_at = ?'];
   const values: (string | number | null)[] = [Date.now()];
-  
+
   if (updates.status !== undefined) {
     setClauses.push('status = ?');
     values.push(updates.status);
   }
-  
+
   if (updates.cloud_run_url !== undefined) {
     setClauses.push('cloud_run_url = ?');
     values.push(updates.cloud_run_url);
   }
-  
+
   if (updates.has_database !== undefined) {
     setClauses.push('has_database = ?');
     values.push(updates.has_database ? 1 : 0);
   }
-  
+
   if (updates.d1_database_id !== undefined) {
     setClauses.push('d1_database_id = ?');
     values.push(updates.d1_database_id);
   }
-  
+
   values.push(deploymentId);
-  
+
   await env.DB.prepare(`
     UPDATE deployments SET ${setClauses.join(', ')} WHERE id = ?
   `).bind(...values).run();
+}
+
+/**
+ * Remove expiration from all deployments for a user
+ * Called when user upgrades to Pro
+ */
+export async function removeExpirationForUser(env: Env, userId: string): Promise<number> {
+  const now = Date.now();
+
+  const result = await env.DB.prepare(`
+    UPDATE deployments 
+    SET expires_at = NULL, updated_at = ? 
+    WHERE user_id = ? AND expires_at IS NOT NULL AND status != 'failed'
+  `).bind(now, userId).run();
+
+  console.log(`Removed expiration from ${result.meta.changes} deployments for user ${userId}`);
+  return result.meta.changes || 0;
 }

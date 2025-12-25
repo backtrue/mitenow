@@ -3,12 +3,12 @@
  * Handles build triggering, Dockerfile generation, and Cloud Run deployment
  */
 
-import type { 
-  Env, 
-  CloudBuildConfig, 
-  CloudBuildResponse, 
+import type {
+  Env,
+  CloudBuildConfig,
+  CloudBuildResponse,
   FrameworkType,
-  ZipAnalysisResult 
+  ZipAnalysisResult
 } from '../types';
 import { ApiError } from '../types';
 import { generateGCPAccessToken, parseServiceAccountKey } from './gcp-auth';
@@ -308,14 +308,17 @@ export async function triggerCloudBuild(
     env.GCP_SERVICE_ACCOUNT_KEY,
     ['https://www.googleapis.com/auth/cloud-platform']
   );
-  
+
   const serviceAccount = parseServiceAccountKey(env.GCP_SERVICE_ACCOUNT_KEY);
   const projectId = env.GCP_PROJECT_ID || serviceAccount.project_id;
   const region = env.GCP_REGION || 'asia-east1';
-  
+
+  // Use the worker service account for Cloud Run as well, since it has the correct permissions
+  const serviceAccountEmail = serviceAccount.client_email;
+
   // Generate image name
   const imageName = `${region}-docker.pkg.dev/${projectId}/mite-apps/${subdomain}:latest`;
-  
+
   // Create Cloud Build configuration
   const buildConfig = createBuildConfig({
     projectId,
@@ -325,9 +328,10 @@ export async function triggerCloudBuild(
     imageName,
     framework: analysis.framework,
     hasRequirements: analysis.has_requirements,
-    secretResourceName
+    secretResourceName,
+    serviceAccountEmail
   });
-  
+
   // Submit build
   const response = await fetch(
     `https://cloudbuild.googleapis.com/v1/projects/${projectId}/builds`,
@@ -340,12 +344,12 @@ export async function triggerCloudBuild(
       body: JSON.stringify(buildConfig)
     }
   );
-  
+
   if (!response.ok) {
     const error = await response.text();
     throw new ApiError(500, `Cloud Build API error: ${error}`, 'CLOUD_BUILD_ERROR');
   }
-  
+
   return response.json() as Promise<CloudBuildResponse>;
 }
 
@@ -358,6 +362,7 @@ interface BuildConfigParams {
   framework: FrameworkType;
   hasRequirements: boolean;
   secretResourceName: string;
+  serviceAccountEmail: string;
 }
 
 /**
@@ -371,15 +376,16 @@ function createBuildConfig(params: BuildConfigParams): CloudBuildConfig {
     imageName,
     framework,
     hasRequirements,
-    secretResourceName
+    secretResourceName,
+    serviceAccountEmail
   } = params;
-  
+
   // projectId is used in the caller for API endpoint, not needed here
   void params.projectId;
-  
+
   const dockerfile = DOCKERFILE_TEMPLATES[framework];
   const defaultRequirements = DEFAULT_REQUIREMENTS[framework];
-  
+
   // Build steps
   const steps = [
     // Step 1: Download source from R2 (via GCS transfer or direct)
@@ -389,7 +395,7 @@ function createBuildConfig(params: BuildConfigParams): CloudBuildConfig {
       args: ['cp', `gs://mite-uploads-omakase-481015/${appId}/source.zip`, '/workspace/source.zip'],
       id: 'download-source'
     },
-    
+
     // Step 2: Extract ZIP
     {
       name: 'ubuntu',
@@ -401,7 +407,7 @@ function createBuildConfig(params: BuildConfigParams): CloudBuildConfig {
       id: 'extract-zip',
       waitFor: ['download-source']
     },
-    
+
     // Step 3: Inject Dockerfile
     {
       name: 'ubuntu',
@@ -415,7 +421,7 @@ DOCKERFILE_EOF`
       id: 'inject-dockerfile',
       waitFor: ['extract-zip']
     },
-    
+
     // Step 4: Inject default requirements.txt if missing
     ...(hasRequirements ? [] : [{
       name: 'ubuntu',
@@ -429,7 +435,7 @@ REQUIREMENTS_EOF`
       id: 'inject-requirements',
       waitFor: ['extract-zip']
     }]),
-    
+
     // Step 5: Build Docker image
     {
       name: 'gcr.io/cloud-builders/docker',
@@ -437,7 +443,7 @@ REQUIREMENTS_EOF`
       id: 'build-image',
       waitFor: hasRequirements ? ['inject-dockerfile'] : ['inject-dockerfile', 'inject-requirements']
     },
-    
+
     // Step 6: Push to Artifact Registry
     {
       name: 'gcr.io/cloud-builders/docker',
@@ -445,7 +451,7 @@ REQUIREMENTS_EOF`
       id: 'push-image',
       waitFor: ['build-image']
     },
-    
+
     // Step 7: Deploy to Cloud Run with Secret Manager
     {
       name: 'gcr.io/google.com/cloudsdktool/cloud-sdk',
@@ -460,14 +466,16 @@ REQUIREMENTS_EOF`
         '--min-instances', '0',
         '--max-instances', '3',
         '--timeout', '300',
-        '--update-secrets', `GOOGLE_API_KEY=${secretResourceName}`,
+        '--remove-env-vars', 'GOOGLE_API_KEY',
+        '--set-secrets', `GOOGLE_API_KEY=${secretResourceName}`,
+        '--service-account', serviceAccountEmail,
         '--port', '8080',
         '--execution-environment', 'gen2'
       ],
       id: 'deploy-cloudrun',
       waitFor: ['push-image']
     },
-    
+
     // Step 8: Make Cloud Run service publicly accessible
     {
       name: 'gcr.io/google.com/cloudsdktool/cloud-sdk',
@@ -482,7 +490,7 @@ REQUIREMENTS_EOF`
       waitFor: ['deploy-cloudrun']
     }
   ];
-  
+
   return {
     source: {
       storageSource: {
@@ -511,9 +519,9 @@ export async function getBuildStatus(
     env.GCP_SERVICE_ACCOUNT_KEY,
     ['https://www.googleapis.com/auth/cloudbuild']
   );
-  
+
   const projectId = env.GCP_PROJECT_ID;
-  
+
   const response = await fetch(
     `https://cloudbuild.googleapis.com/v1/projects/${projectId}/builds/${buildId}`,
     {
@@ -522,11 +530,11 @@ export async function getBuildStatus(
       }
     }
   );
-  
+
   if (!response.ok) {
     throw new ApiError(500, 'Failed to get build status');
   }
-  
+
   const build = await response.json() as {
     status: string;
     logUrl?: string;
@@ -534,7 +542,7 @@ export async function getBuildStatus(
       images?: Array<{ name: string }>;
     };
   };
-  
+
   return {
     status: build.status,
     logUrl: build.logUrl
@@ -552,10 +560,10 @@ export async function getCloudRunServiceUrl(
     env.GCP_SERVICE_ACCOUNT_KEY,
     ['https://www.googleapis.com/auth/cloud-platform']
   );
-  
+
   const projectId = env.GCP_PROJECT_ID;
   const region = env.GCP_REGION || 'asia-east1';
-  
+
   const response = await fetch(
     `https://run.googleapis.com/v2/projects/${projectId}/locations/${region}/services/${serviceName}`,
     {
@@ -564,15 +572,15 @@ export async function getCloudRunServiceUrl(
       }
     }
   );
-  
+
   if (!response.ok) {
     return null;
   }
-  
+
   const service = await response.json() as {
     uri?: string;
   };
-  
+
   return service.uri || null;
 }
 
@@ -584,14 +592,14 @@ export function analyzeZipContents(files: string[], requirementsContent?: string
   let framework: FrameworkType = 'unknown';
   let entrypoint = 'app.py';
   const hasRequirements = files.includes('requirements.txt');
-  
+
   // Check for main entry points
   if (files.includes('app.py')) {
     entrypoint = 'app.py';
   } else if (files.includes('main.py')) {
     entrypoint = 'main.py';
   }
-  
+
   // Detect framework from requirements.txt content
   if (requirementsContent) {
     const lowerContent = requirementsContent.toLowerCase();
@@ -603,7 +611,7 @@ export function analyzeZipContents(files: string[], requirementsContent?: string
       framework = 'flask';
     }
   }
-  
+
   return {
     framework,
     entrypoint,

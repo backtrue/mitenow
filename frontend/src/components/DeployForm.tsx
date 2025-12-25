@@ -17,7 +17,7 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
   const [framework, setFramework] = useState('auto');
   const [isDeploying, setIsDeploying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Subdomain availability check
   const [subdomainCheck, setSubdomainCheck] = useState<SubdomainCheckResponse | null>(null);
   const [isCheckingSubdomain, setIsCheckingSubdomain] = useState(false);
@@ -53,7 +53,7 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
 
   const handleReleaseSubdomain = async () => {
     if (!subdomainCheck?.canRelease) return;
-    
+
     setIsReleasing(true);
     try {
       await api.releaseSubdomain(subdomain);
@@ -74,6 +74,8 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
     setError(null);
 
     try {
+      // Save API key for praise generation
+      localStorage.setItem('mite_api_key', apiKey);
       await onDeploy(subdomain, apiKey, framework);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Deployment failed');
@@ -131,9 +133,9 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
         {subdomainCheck && (
           <div className={clsx(
             'mt-2 flex items-center justify-between text-sm',
-            subdomainCheck.available ? 'text-green-600 dark:text-green-400' : 
-            subdomainCheck.canRelease ? 'text-yellow-600 dark:text-yellow-400' : 
-            'text-red-600 dark:text-red-400'
+            subdomainCheck.available ? 'text-green-600 dark:text-green-400' :
+              subdomainCheck.canRelease ? 'text-yellow-600 dark:text-yellow-400' :
+                'text-red-600 dark:text-red-400'
           )}>
             <span>{subdomainCheck.message}</span>
             {subdomainCheck.canRelease && (

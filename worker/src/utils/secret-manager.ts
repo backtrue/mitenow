@@ -126,10 +126,8 @@ export async function storeUserApiKey(
   const secretId = `gemini-api-key-${appId}`;
   await storeSecret(env, secretId, apiKey);
 
-  const serviceAccount = parseServiceAccountKey(env.GCP_SERVICE_ACCOUNT_KEY);
-  const projectId = env.GCP_PROJECT_ID || serviceAccount.project_id;
-
-  return `projects/${projectId}/secrets/${secretId}/versions/latest`;
+  // Return in format for gcloud --update-secrets: SECRET_NAME:latest
+  return `${secretId}:latest`;
 }
 
 /**

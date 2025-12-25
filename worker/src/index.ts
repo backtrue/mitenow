@@ -40,6 +40,8 @@ import {
   handleGetDeployment,
   handleDeleteDeployment,
 } from './handlers/deployments';
+import { handleGetShare } from './handlers/share';
+import { handleGeneratePraise } from './handlers/praise';
 import {
   captureError,
   createRequestTracker,
@@ -170,6 +172,16 @@ async function handleApiRequest(
 
   } else if (path === '/api/v1/webhook/stripe') {
     response = await handleStripeWebhook(request, env);
+
+    // Share & Praise endpoints
+  } else if (path.startsWith('/api/v1/share/')) {
+    const appId = path.split('/')[4];
+    response = await handleGetShare(request, env, appId);
+
+  } else if (path.startsWith('/api/v1/praise/')) {
+    await enforceRateLimit(env, request, 'deploy');
+    const appId = path.split('/')[4];
+    response = await handleGeneratePraise(request, env, appId);
 
     // User deployments endpoints
   } else if (path === '/api/v1/deployments') {

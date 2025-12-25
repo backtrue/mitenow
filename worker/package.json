@@ -15,7 +15,9 @@
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "fflate": "^0.8.2"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20231218.0",
     "@types/node": "^20.10.0",
