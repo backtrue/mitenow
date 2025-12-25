@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mite.now - Deploy AI Apps in Seconds",
-  description: "Upload your Streamlit or Gradio app and get a live URL instantly. No Docker, no config, just deploy.",
+  title: "mite.now - 秒速部署 AI 應用程式",
+  description: "上傳你的 AI Studio 應用程式，立即獲得上線網址。無需 Docker、無需設定，拖拉即部署。",
 };
 
 export default function RootLayout({
@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="zh-TW">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

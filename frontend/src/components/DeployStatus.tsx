@@ -15,43 +15,43 @@ const STATUS_CONFIG = {
     icon: Clock,
     color: 'text-zinc-500',
     bgColor: 'bg-zinc-100 dark:bg-zinc-800',
-    label: 'Pending',
-    description: 'Waiting to start...',
+    label: '等待中',
+    description: '準備開始...',
   },
   uploading: {
     icon: Upload,
     color: 'text-blue-500',
     bgColor: 'bg-blue-100 dark:bg-blue-900/30',
-    label: 'Uploading',
-    description: 'Uploading your files...',
+    label: '上傳中',
+    description: '正在上傳檔案...',
   },
   building: {
     icon: Hammer,
     color: 'text-amber-500',
     bgColor: 'bg-amber-100 dark:bg-amber-900/30',
-    label: 'Building',
-    description: 'Building your application...',
+    label: '建置中',
+    description: '正在建置應用程式...',
   },
   deploying: {
     icon: Rocket,
     color: 'text-purple-500',
     bgColor: 'bg-purple-100 dark:bg-purple-900/30',
-    label: 'Deploying',
-    description: 'Deploying to Cloud Run...',
+    label: '部署中',
+    description: '正在部署到雲端...',
   },
   active: {
     icon: CheckCircle,
     color: 'text-green-500',
     bgColor: 'bg-green-100 dark:bg-green-900/30',
-    label: 'Active',
-    description: 'Your app is live!',
+    label: '運行中',
+    description: '你的應用程式已上線！',
   },
   failed: {
     icon: XCircle,
     color: 'text-red-500',
     bgColor: 'bg-red-100 dark:bg-red-900/30',
-    label: 'Failed',
-    description: 'Deployment failed',
+    label: '失敗',
+    description: '部署失敗',
   },
 };
 
@@ -91,7 +91,7 @@ export function DeployStatus({ appId, subdomain }: DeployStatusProps) {
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to fetch status');
+          setError(err instanceof Error ? err.message : '無法取得狀態');
         }
       }
     };

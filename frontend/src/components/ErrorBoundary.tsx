@@ -101,18 +101,18 @@ function DefaultErrorFallback({ error, reset }: DefaultErrorFallbackProps) {
             </div>
 
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Something went wrong
+                發生錯誤
             </h3>
 
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center max-w-md">
-                {error.message || 'An unexpected error occurred'}
+                {error.message || '發生了意外錯誤'}
             </p>
 
             <button
                 onClick={reset}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
             >
-                Try Again
+                重試
             </button>
         </div>
     );

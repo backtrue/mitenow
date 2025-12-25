@@ -44,7 +44,7 @@ export function SharePageClient() {
         if (appId) {
             fetchShareData();
         } else {
-            setError('Missing app ID');
+            setError('缺少應用程式 ID');
             setLoading(false);
         }
     }, [appId]);
@@ -63,7 +63,7 @@ export function SharePageClient() {
                 await generatePraise();
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load');
+            setError(err instanceof Error ? err.message : '讀取失敗');
         } finally {
             setLoading(false);
         }

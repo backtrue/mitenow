@@ -60,7 +60,7 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
       // Re-check availability after release
       await checkSubdomain(subdomain);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to release subdomain');
+      setError(err instanceof Error ? err.message : '無法釋放子網域');
     } finally {
       setIsReleasing(false);
     }
@@ -78,7 +78,7 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
       localStorage.setItem('mite_api_key', apiKey);
       await onDeploy(subdomain, apiKey, framework);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Deployment failed');
+      setError(err instanceof Error ? err.message : '部署失敗');
     } finally {
       setIsDeploying(false);
     }
@@ -145,19 +145,19 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
                 disabled={isReleasing}
                 className="ml-2 px-3 py-1 text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded hover:bg-yellow-200 dark:hover:bg-yellow-900/50 disabled:opacity-50"
               >
-                {isReleasing ? 'Releasing...' : 'Release & Use'}
+                {isReleasing ? '釋放中...' : '釋放並使用'}
               </button>
             )}
           </div>
         )}
         {!subdomainCheck && subdomain.length > 0 && subdomain.length < 3 && (
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Subdomain must be at least 3 characters
+            子網域至少需要 3 個字元
           </p>
         )}
         {(!subdomainCheck || subdomainCheck.available) && (
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Your app will be available at https://{subdomain || 'my-app'}.mite.now
+            你的應用程式將在 https://{subdomain || 'my-app'}.mite.now 上線
           </p>
         )}
       </div>
@@ -165,7 +165,7 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
       <div>
         <label htmlFor="apiKey" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
           <Key className="w-4 h-4 inline-block mr-1" />
-          OpenAI API Key
+          Gemini API Key
         </label>
         <input
           type="password"
@@ -234,12 +234,12 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
         {isDeploying ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Deploying...
+            部署中...
           </>
         ) : (
           <>
             <Rocket className="w-5 h-5" />
-            Deploy to mite.now
+            部署到 mite.now
           </>
         )}
       </button>

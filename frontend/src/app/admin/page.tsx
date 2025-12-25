@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  Zap, 
-  RefreshCw, 
-  Trash2, 
-  ExternalLink, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  Zap,
+  RefreshCw,
+  Trash2,
+  ExternalLink,
+  CheckCircle,
+  XCircle,
+  Clock,
   Loader2,
   Shield,
   BarChart3
@@ -53,31 +53,31 @@ export default function AdminPage() {
 
   const fetchDeployments = useCallback(async () => {
     if (!token) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${API_BASE}/api/v1/admin/deployments`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           setIsAuthenticated(false);
-          throw new Error('Invalid admin token');
+          throw new Error('管理者權杖無效');
         }
-        throw new Error('Failed to fetch deployments');
+        throw new Error('無法取得部署列表');
       }
-      
+
       const data: DeploymentsResponse = await response.json();
       setDeployments(data.deployments);
       setStats(data.stats);
       setIsAuthenticated(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : '發生錯誤');
     } finally {
       setIsLoading(false);
     }
@@ -89,8 +89,8 @@ export default function AdminPage() {
   };
 
   const handleDelete = async (appId: string) => {
-    if (!confirm('Are you sure you want to delete this deployment?')) return;
-    
+    if (!confirm('確定要刪除這個部署嗎？')) return;
+
     setDeletingId(appId);
     try {
       const response = await fetch(`${API_BASE}/api/v1/admin/deployments/${appId}`, {
@@ -99,15 +99,15 @@ export default function AdminPage() {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to delete deployment');
+        throw new Error('刪除部署失敗');
       }
-      
+
       // Refresh list
       await fetchDeployments();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete');
+      setError(err instanceof Error ? err.message : '刪除失敗');
     } finally {
       setDeletingId(null);
     }
@@ -116,7 +116,7 @@ export default function AdminPage() {
   // Auto-refresh every 30 seconds when authenticated
   useEffect(() => {
     if (!isAuthenticated) return;
-    
+
     const interval = setInterval(fetchDeployments, 30000);
     return () => clearInterval(interval);
   }, [isAuthenticated, fetchDeployments]);
@@ -144,7 +144,7 @@ export default function AdminPage() {
       pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
       uploading: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
     };
-    
+
     return (
       <span className={clsx(
         'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium',
@@ -175,27 +175,27 @@ export default function AdminPage() {
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
               <Shield className="w-7 h-7 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Admin Dashboard</h1>
-            <p className="text-zinc-500 dark:text-zinc-400 mt-2">Enter your admin token to continue</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">管理者後台</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 mt-2">請輸入管理者權杖以繼續</p>
           </div>
-          
+
           <form onSubmit={handleLogin} className="space-y-4">
             <input
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Admin Token"
+              placeholder="管理者權杖"
               className={clsx(
                 'w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700',
                 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100',
                 'focus:outline-none focus:ring-2 focus:ring-blue-500'
               )}
             />
-            
+
             {error && (
               <p className="text-sm text-red-500">{error}</p>
             )}
-            
+
             <button
               type="submit"
               disabled={!token || isLoading}
@@ -210,10 +210,10 @@ export default function AdminPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Authenticating...
+                  驗證中...
                 </>
               ) : (
-                'Login'
+                '登入'
               )}
             </button>
           </form>
@@ -235,14 +235,14 @@ export default function AdminPage() {
             <span className="text-xl font-bold text-zinc-900 dark:text-white">mite.now</span>
             <span className="text-sm text-zinc-500 dark:text-zinc-400 ml-2">Admin</span>
           </div>
-          
+
           <button
             onClick={fetchDeployments}
             disabled={isLoading}
             className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
           >
             <RefreshCw className={clsx('w-4 h-4', isLoading && 'animate-spin')} />
-            Refresh
+            重新整理
           </button>
         </div>
       </header>
@@ -254,35 +254,35 @@ export default function AdminPage() {
             <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800">
               <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 mb-1">
                 <BarChart3 className="w-4 h-4" />
-                <span className="text-sm">Total</span>
+                <span className="text-sm">總計</span>
               </div>
               <p className="text-2xl font-bold text-zinc-900 dark:text-white">{stats.total}</p>
             </div>
             <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800">
               <div className="flex items-center gap-2 text-green-500 mb-1">
                 <CheckCircle className="w-4 h-4" />
-                <span className="text-sm">Active</span>
+                <span className="text-sm">運行中</span>
               </div>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.active}</p>
             </div>
             <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800">
               <div className="flex items-center gap-2 text-blue-500 mb-1">
                 <Loader2 className="w-4 h-4" />
-                <span className="text-sm">Building</span>
+                <span className="text-sm">建置中</span>
               </div>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.building}</p>
             </div>
             <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800">
               <div className="flex items-center gap-2 text-yellow-500 mb-1">
                 <Clock className="w-4 h-4" />
-                <span className="text-sm">Pending</span>
+                <span className="text-sm">等待中</span>
               </div>
               <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending}</p>
             </div>
             <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800">
               <div className="flex items-center gap-2 text-red-500 mb-1">
                 <XCircle className="w-4 h-4" />
-                <span className="text-sm">Failed</span>
+                <span className="text-sm">失敗</span>
               </div>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.failed}</p>
             </div>
@@ -299,12 +299,12 @@ export default function AdminPage() {
         {/* Deployments Table */}
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
           <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Deployments</h2>
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">部署列表</h2>
           </div>
-          
+
           {deployments.length === 0 ? (
             <div className="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">
-              No deployments found
+              尚無部署紀錄
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -312,19 +312,19 @@ export default function AdminPage() {
                 <thead className="bg-zinc-50 dark:bg-zinc-800/50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Subdomain
+                      子網域
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Status
+                      狀態
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Framework
+                      框架
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Created
+                      建立時間
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Actions
+                      操作
                     </th>
                   </tr>
                 </thead>
@@ -368,7 +368,7 @@ export default function AdminPage() {
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-2 text-zinc-400 hover:text-blue-500"
-                              title="Open site"
+                              title="開啟網站"
                             >
                               <ExternalLink className="w-4 h-4" />
                             </a>
@@ -377,7 +377,7 @@ export default function AdminPage() {
                             onClick={() => handleDelete(deployment.app_id)}
                             disabled={deletingId === deployment.app_id}
                             className="p-2 text-zinc-400 hover:text-red-500 disabled:opacity-50"
-                            title="Delete deployment"
+                            title="刪除部署"
                           >
                             {deletingId === deployment.app_id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
