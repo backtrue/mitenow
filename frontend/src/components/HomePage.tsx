@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Zap, Shield, Clock, LogIn, User, Check, X, ChevronDown, ExternalLink, Sparkles, Upload, Key, Rocket, Code2, FileUp } from 'lucide-react';
+import clsx from 'clsx';
 import Link from 'next/link';
 import { DropZone } from '@/components/DropZone';
 import { DeployForm } from '@/components/DeployForm';
@@ -411,12 +412,13 @@ export function HomePage() {
                     </div>
                   ) : (
                     <>
-                      {quota && (\n                        <div className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-                        <span>{interpolate(t.home.quotaDisplay, { current: quota.current_deployments, max: quota.max_deployments })}</span>
-                        {quota.expires_in_hours && (
-                          <span className="text-orange-500">• {interpolate(t.home.ttlDisplay, { hours: quota.expires_in_hours })}</span>
-                        )}
-                      </div>
+                      {quota && (
+                        <div className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                          <span>{interpolate(t.home.quotaDisplay, { current: quota.current_deployments, max: quota.max_deployments })}</span>
+                          {quota.expires_in_hours && (
+                            <span className="text-orange-500">• {interpolate(t.home.ttlDisplay, { hours: quota.expires_in_hours })}</span>
+                          )}
+                        </div>
                       )}
 
                       {deployMode === 'zip' ? (
