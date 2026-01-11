@@ -17,10 +17,10 @@ export function DropZone({ onFileSelect, disabled = false, maxSize = 50 }: DropZ
 
   const validateFile = useCallback((file: File): string | null => {
     if (!file.name.endsWith('.zip')) {
-      return 'Please upload a ZIP file';
+      return '請上傳 ZIP 檔案';
     }
     if (file.size > maxSize * 1024 * 1024) {
-      return `File size must be less than ${maxSize}MB`;
+      return `檔案大小不得超過 ${maxSize}MB`;
     }
     return null;
   }, [maxSize]);
@@ -40,9 +40,9 @@ export function DropZone({ onFileSelect, disabled = false, maxSize = 50 }: DropZ
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (disabled) return;
-    
+
     const file = e.dataTransfer.files[0];
     if (file) {
       handleFile(file);
@@ -103,7 +103,7 @@ export function DropZone({ onFileSelect, disabled = false, maxSize = 50 }: DropZ
           disabled={disabled}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
         />
-        
+
         <div className="flex flex-col items-center gap-4 text-center">
           {selectedFile ? (
             <>
@@ -128,7 +128,7 @@ export function DropZone({ onFileSelect, disabled = false, maxSize = 50 }: DropZ
                   className="flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                 >
                   <X className="w-4 h-4" />
-                  Remove
+                  移除
                 </button>
               )}
             </>
@@ -140,7 +140,7 @@ export function DropZone({ onFileSelect, disabled = false, maxSize = 50 }: DropZ
               <div>
                 <p className="font-medium text-red-600 dark:text-red-400">{error}</p>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                  Click or drag to try again
+                  點擊或拖放重試
                 </p>
               </div>
             </>
@@ -151,10 +151,10 @@ export function DropZone({ onFileSelect, disabled = false, maxSize = 50 }: DropZ
               </div>
               <div>
                 <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                  Drop your ZIP file here
+                  將 ZIP 檔拖放到這裡
                 </p>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                  or click to browse (max {maxSize}MB)
+                  或點擊選擇檔案（最大 {maxSize}MB）
                 </p>
               </div>
             </>

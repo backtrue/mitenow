@@ -201,15 +201,15 @@ export function DeployStatus({ appId, subdomain }: DeployStatusProps) {
           )}
         >
           <ExternalLink className="w-5 h-5" />
-          Open {appUrl}
+          開啟 {appUrl}
         </a>
       )}
 
       {/* Metadata */}
       <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
-        <p>App ID: {appId}</p>
-        <p>Created: {new Date(status.created_at).toLocaleString()}</p>
-        <p>Updated: {new Date(status.updated_at).toLocaleString()}</p>
+        <p>應用程式 ID: {appId}</p>
+        <p>建立時間: {new Date(status.created_at).toLocaleString()}</p>
+        <p>更新時間: {new Date(status.updated_at).toLocaleString()}</p>
       </div>
     </div>
   );

@@ -8,8 +8,9 @@
 
 import type { Env } from './types';
 import { ApiError } from './types';
-import { handlePrepare, handleUpload } from './handlers/prepare';
+import { handlePrepare, handleUpload, handleGetSecurity } from './handlers/prepare';
 import { handleDeploy } from './handlers/deploy';
+import { handleDeployCode } from './handlers/deploy-code';
 import { handleStatus } from './handlers/status';
 import { handleWildcardProxy } from './handlers/proxy';
 import { handleCloudBuildWebhook } from './handlers/webhook';
@@ -119,6 +120,10 @@ async function handleApiRequest(
     await enforceRateLimit(env, request, 'deploy');
     response = await handleDeploy(request, env);
 
+  } else if (path === '/api/v1/deploy-code') {
+    await enforceRateLimit(env, request, 'deploy');
+    response = await handleDeployCode(request, env);
+
   } else if (path.startsWith('/api/v1/status/')) {
     await enforceRateLimit(env, request, 'status');
     const appId = path.split('/')[4];
@@ -177,6 +182,10 @@ async function handleApiRequest(
   } else if (path.startsWith('/api/v1/share/')) {
     const appId = path.split('/')[4];
     response = await handleGetShare(request, env, appId);
+
+  } else if (path.startsWith('/api/v1/security/')) {
+    const appId = path.split('/')[4];
+    response = await handleGetSecurity(request, env, appId);
 
   } else if (path.startsWith('/api/v1/praise/')) {
     await enforceRateLimit(env, request, 'deploy');

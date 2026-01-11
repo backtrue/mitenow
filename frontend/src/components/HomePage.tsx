@@ -1,16 +1,19 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Zap, Shield, Clock, LogIn, User, Check, X, ChevronDown, ExternalLink, Sparkles, Upload, Key, Rocket } from 'lucide-react';
+import { Zap, Shield, Clock, LogIn, User, Check, X, ChevronDown, ExternalLink, Sparkles, Upload, Key, Rocket, Code2, FileUp } from 'lucide-react';
 import Link from 'next/link';
 import { DropZone } from '@/components/DropZone';
 import { DeployForm } from '@/components/DeployForm';
+import { CodeDeployForm } from '@/components/CodeDeployForm';
 import { DeployStatus } from '@/components/DeployStatus';
+import { SecurityChecklist } from '@/components/SecurityChecklist';
 import { LocaleSwitcher } from '@/components/LocaleSwitcher';
-import { api } from '@/lib/api';
+import { api, SecurityScanResult } from '@/lib/api';
 import { useTranslation, interpolate } from '@/hooks/useTranslation';
 
 type Step = 'upload' | 'configure' | 'deploying';
+type DeployMode = 'zip' | 'code';
 
 interface UserInfo {
   id: string;
@@ -31,6 +34,7 @@ interface QuotaInfo {
 export function HomePage() {
   const { t } = useTranslation();
   const [step, setStep] = useState<Step>('upload');
+  const [deployMode, setDeployMode] = useState<DeployMode>('zip');
   const [file, setFile] = useState<File | null>(null);
   const [appId, setAppId] = useState<string | null>(null);
   const [subdomain, setSubdomain] = useState<string>('');
@@ -40,6 +44,10 @@ export function HomePage() {
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  // Security scan state
+  const [securityResult, setSecurityResult] = useState<SecurityScanResult | null>(null);
+  const [securityConfirmed, setSecurityConfirmed] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -75,11 +83,28 @@ export function HomePage() {
     setFile(selectedFile);
     setUploadError(null);
     setIsUploading(true);
+    setSecurityResult(null);
+    setSecurityConfirmed(false);
 
     try {
       const { app_id, upload_url } = await api.prepare(selectedFile.name);
       setAppId(app_id);
       await api.upload(upload_url, selectedFile);
+
+      // Fetch security scan results
+      try {
+        const security = await api.getSecurityResults(app_id);
+        setSecurityResult(security);
+        // Auto-confirm if all checks passed with no warnings
+        if (security.passed && !security.hasWarnings) {
+          setSecurityConfirmed(true);
+        }
+      } catch (err) {
+        console.warn('Failed to get security results:', err);
+        // Continue without security results
+        setSecurityConfirmed(true);
+      }
+
       setStep('configure');
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : t.errors.uploadFailed);
@@ -100,6 +125,17 @@ export function HomePage() {
     });
     setStep('deploying');
   }, [appId]);
+
+  const handleCodeDeploy = useCallback((deployedAppId: string, deployedSubdomain: string) => {
+    setAppId(deployedAppId);
+    setSubdomain(deployedSubdomain);
+    setStep('deploying');
+  }, []);
+
+  // Check if deployment is blocked due to critical security issues
+  const isDeployBlocked = !!(securityResult && !securityResult.passed);
+  // Check if confirmation is needed (warnings present)
+  const needsConfirmation = !!(securityResult && securityResult.hasWarnings && !isDeployBlocked);
 
   const scrollToUpload = () => {
     document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -294,6 +330,34 @@ export function HomePage() {
                 </p>
               </div>
 
+              {/* Deploy Mode Toggle */}
+              <div className="flex items-center justify-center gap-2 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                <button
+                  onClick={() => setDeployMode('zip')}
+                  className={clsx(
+                    'flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all',
+                    deployMode === 'zip'
+                      ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                  )}
+                >
+                  <FileUp className="w-4 h-4" />
+                  上傳 ZIP 檔案
+                </button>
+                <button
+                  onClick={() => setDeployMode('code')}
+                  className={clsx(
+                    'flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all',
+                    deployMode === 'code'
+                      ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                  )}
+                >
+                  <Code2 className="w-4 h-4" />
+                  貼上 AI 程式碼
+                </button>
+              </div>
+
               {!authLoading && !user ? (
                 <div className="text-center py-8">
                   <div className="mb-4">
@@ -347,19 +411,22 @@ export function HomePage() {
                     </div>
                   ) : (
                     <>
-                      {quota && (
-                        <div className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-                          <span>{interpolate(t.home.quotaDisplay, { current: quota.current_deployments, max: quota.max_deployments })}</span>
-                          {quota.expires_in_hours && (
-                            <span className="text-orange-500">• {interpolate(t.home.ttlDisplay, { hours: quota.expires_in_hours })}</span>
-                          )}
-                        </div>
+                      {quota && (\n                        <div className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                        <span>{interpolate(t.home.quotaDisplay, { current: quota.current_deployments, max: quota.max_deployments })}</span>
+                        {quota.expires_in_hours && (
+                          <span className="text-orange-500">• {interpolate(t.home.ttlDisplay, { hours: quota.expires_in_hours })}</span>
+                        )}
+                      </div>
                       )}
 
-                      <DropZone
-                        onFileSelect={handleFileSelect}
-                        disabled={isUploading}
-                      />
+                      {deployMode === 'zip' ? (
+                        <DropZone
+                          onFileSelect={handleFileSelect}
+                          disabled={isUploading}
+                        />
+                      ) : (
+                        <CodeDeployForm onSuccess={handleCodeDeploy} />
+                      )}
                     </>
                   )}
                 </>
@@ -390,9 +457,20 @@ export function HomePage() {
                 </p>
               </div>
 
+              {/* Security Checklist */}
+              {securityResult && (
+                <SecurityChecklist
+                  result={securityResult}
+                  onConfirm={needsConfirmation ? setSecurityConfirmed : undefined}
+                  confirmed={securityConfirmed}
+                />
+              )}
+
+              {/* Deploy Form - disabled if blocked or needs confirmation */}
               <DeployForm
                 appId={appId}
                 onDeploy={handleDeploy}
+                disabled={isDeployBlocked || (needsConfirmation && !securityConfirmed)}
               />
             </div>
           )}

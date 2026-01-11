@@ -166,6 +166,11 @@ export async function createDeploymentInD1(
     expiresAt = Date.now() + (FREE_TTL_HOURS * 60 * 60 * 1000);
   }
 
+  // Delete any existing deployment with same subdomain (handles stale/failed deployments)
+  await env.DB.prepare(`
+    DELETE FROM deployments WHERE subdomain = ?
+  `).bind(deployment.subdomain).run();
+
   await env.DB.prepare(`
     INSERT INTO deployments (
       id, user_id, subdomain, framework, status, 

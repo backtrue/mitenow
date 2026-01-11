@@ -91,7 +91,7 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
       <div>
         <label htmlFor="subdomain" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
           <Globe className="w-4 h-4 inline-block mr-1" />
-          Subdomain
+          子網域
         </label>
         <div className="flex items-center">
           <div className="relative flex-1">
@@ -165,14 +165,14 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
       <div>
         <label htmlFor="apiKey" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
           <Key className="w-4 h-4 inline-block mr-1" />
-          Gemini API Key
+          Gemini API 金鑰（Gemini API Key）
         </label>
         <input
           type="password"
           id="apiKey"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          placeholder="sk-..."
+          placeholder="AIza..."
           disabled={disabled || isDeploying}
           className={clsx(
             'w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700',
@@ -182,13 +182,13 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
           )}
         />
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Your API key is passed securely to your app and never stored
+          你的 API 金鑰會安全地傳遞給應用程式，不會被儲存
         </p>
       </div>
 
       <div>
         <label htmlFor="framework" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-          Framework
+          框架
         </label>
         <select
           id="framework"
@@ -202,7 +202,7 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
             'disabled:opacity-50 disabled:cursor-not-allowed'
           )}
         >
-          <option value="auto">Auto-detect</option>
+          <option value="auto">自動偵測</option>
           <option value="streamlit">Streamlit</option>
           <option value="gradio">Gradio</option>
           <option value="flask">Flask</option>
@@ -210,7 +210,7 @@ export function DeployForm({ appId, onDeploy, disabled = false }: DeployFormProp
           <option value="react">React/Vite</option>
           <option value="nextjs">Next.js</option>
           <option value="express">Express.js</option>
-          <option value="static">Static HTML</option>
+          <option value="static">靜態 HTML</option>
         </select>
       </div>
 

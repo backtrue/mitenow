@@ -53,7 +53,7 @@ export function SharePageClient() {
         try {
             const response = await fetch(`/api/v1/share/${appId}`);
             if (!response.ok) {
-                throw new Error('Deployment not found');
+                throw new Error('找不到部署');
             }
             const data = await response.json();
             setShareData(data);
@@ -111,7 +111,7 @@ export function SharePageClient() {
 
     const shareToFacebook = () => {
         if (!shareData) return;
-        const text = shareData.praise_text || `Check out my AI app: ${shareData.live_url}`;
+        const text = shareData.praise_text || `來看看我的 AI 應用: ${shareData.live_url}`;
         window.open(
             `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareData.live_url)}&quote=${encodeURIComponent(text)}`,
             '_blank'
@@ -122,7 +122,7 @@ export function SharePageClient() {
         if (!shareData) return;
         const text = shareData.praise_text
             ? `${shareData.praise_text}\n\n🔗 ${shareData.live_url}`
-            : `Check out my AI app: ${shareData.live_url}`;
+            : `來看看我的 AI 應用: ${shareData.live_url}`;
         window.open(
             `https://www.threads.net/intent/post?text=${encodeURIComponent(text)}`,
             '_blank'
@@ -133,7 +133,7 @@ export function SharePageClient() {
         if (!shareData) return;
         const text = shareData.praise_text
             ? `${shareData.praise_text}\n\n${shareData.live_url}`
-            : `Check out my AI app: ${shareData.live_url}`;
+            : `來看看我的 AI 應用: ${shareData.live_url}`;
         window.open(
             `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareData.live_url)}&text=${encodeURIComponent(text)}`,
             '_blank'
@@ -152,9 +152,9 @@ export function SharePageClient() {
         return (
             <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-blue-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex items-center justify-center">
                 <div className="text-center">
-                    <p className="text-zinc-600 dark:text-zinc-400 mb-4">{error || 'Not found'}</p>
+                    <p className="text-zinc-600 dark:text-zinc-400 mb-4">{error || '找不到'}</p>
                     <Link href="/" className="text-orange-500 hover:underline">
-                        ← Back to home
+                        ← 返回首頁
                     </Link>
                 </div>
             </div>
@@ -183,7 +183,7 @@ export function SharePageClient() {
                 <div className="text-center mb-8">
                     <div className="text-6xl mb-4">🎉</div>
                     <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
-                        Your App is Live!
+                        你的應用程式已上線！
                     </h1>
                 </div>
 
@@ -191,7 +191,7 @@ export function SharePageClient() {
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 p-6 mb-8">
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">Live URL</p>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">網址</p>
                             <a
                                 href={shareData.live_url}
                                 target="_blank"
@@ -205,7 +205,7 @@ export function SharePageClient() {
                             <button
                                 onClick={copyLink}
                                 className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-                                title="Copy link"
+                                title="複製連結"
                             >
                                 {copied ? (
                                     <Check className="w-5 h-5 text-green-500" />
@@ -218,7 +218,7 @@ export function SharePageClient() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-3 rounded-xl bg-orange-500 hover:bg-orange-600 transition-colors"
-                                title="Open app"
+                                title="開啟應用"
                             >
                                 <ExternalLink className="w-5 h-5 text-white" />
                             </a>
@@ -247,7 +247,7 @@ export function SharePageClient() {
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <Share2 className="w-5 h-5 text-zinc-500" />
-                        <h3 className="font-medium text-zinc-900 dark:text-white">Share your creation</h3>
+                        <h3 className="font-medium text-zinc-900 dark:text-white">分享你的作品</h3>
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                         <button
@@ -286,7 +286,7 @@ export function SharePageClient() {
                         href="/dashboard"
                         className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                     >
-                        ← Back to Dashboard
+                        ← 返回儀表板
                     </Link>
                 </div>
             </main>

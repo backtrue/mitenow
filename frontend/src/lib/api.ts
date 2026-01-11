@@ -314,6 +314,22 @@ export interface StatusResponse {
   updated_at: number;
 }
 
+export interface DeployCodeResponse {
+  app_id: string;
+  subdomain: string;
+  status: string;
+  message: string;
+  ai_detection: {
+    isAIGenerated: boolean;
+    confidence: number;
+    source: 'chatgpt' | 'gemini' | 'copilot' | 'unknown';
+  };
+  framework_detection: {
+    framework: string;
+    confidence: number;
+  };
+}
+
 // ============================================
 // Domain-Specific API Methods
 // ============================================
@@ -344,7 +360,8 @@ export const api = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to release subdomain');
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || data.message || '無法釋放子網域');
     }
   },
 
@@ -420,4 +437,64 @@ export const api = {
 
     return response.json();
   },
+
+  /**
+   * Deploy code directly (without ZIP upload)
+   */
+  async deployCode(params: {
+    code: string;
+    subdomain: string;
+    api_key: string;
+    framework?: string;
+    filename?: string;
+  }): Promise<DeployCodeResponse> {
+    const response = await fetch('/api/v1/deploy-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || 'Failed to deploy code');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Get security scan results for an app
+   */
+  async getSecurityResults(appId: string): Promise<SecurityScanResult> {
+    const response = await fetch(`/api/v1/security/${appId}`, {
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get security results');
+    }
+
+    return response.json();
+  },
 };
+
+// ============================================
+// Security Scan Types
+// ============================================
+
+export interface SecurityCheck {
+  id: string;
+  name: string;
+  passed: boolean;
+  severity: 'critical' | 'warning';
+  message: string;
+  findings: string[];
+}
+
+export interface SecurityScanResult {
+  passed: boolean;
+  hasWarnings: boolean;
+  checks: SecurityCheck[];
+}
+

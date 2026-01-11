@@ -6,11 +6,11 @@
 
 import type { Env } from '../types';
 import { ApiError } from '../types';
-import { 
-  checkSubdomainAvailability, 
+import {
+  checkSubdomainAvailability,
   releaseStaleSubdomain,
   canUserReleaseSubdomain,
-  SubdomainCheckResult 
+  SubdomainCheckResult
 } from '../utils/kv';
 import { getCurrentUser } from './auth';
 
@@ -44,7 +44,7 @@ export async function handleSubdomainCheck(
       subdomain: normalizedSubdomain,
       available: false,
       reason: 'invalid_format',
-      message: 'Subdomain must be 1-63 characters, lowercase alphanumeric and hyphens only, cannot start or end with hyphen'
+      message: '子網域格式無效，只能用小寫字母、數字和連字元 (1-63 字元)'
     };
     return new Response(JSON.stringify(response), {
       status: 200,
@@ -53,7 +53,7 @@ export async function handleSubdomainCheck(
   }
 
   const result = await checkSubdomainAvailability(env, normalizedSubdomain);
-  
+
   const response: SubdomainCheckResponse = {
     subdomain: normalizedSubdomain,
     available: result.available,
@@ -79,29 +79,26 @@ export async function handleSubdomainRelease(
   if (request.method !== 'POST') {
     throw new ApiError(405, 'Method not allowed');
   }
-  
-  // Get current user (optional - anonymous users can release after cooldown)
+
+  // Get current user (must be logged in)
   const user = await getCurrentUser(request, env);
   const userId = user?.id;
-  
-  // Check if user can release this subdomain
-  if (userId) {
-    const canRelease = await canUserReleaseSubdomain(env, subdomain, userId);
-    if (!canRelease.canRelease) {
-      throw new ApiError(403, canRelease.reason || 'Cannot release this subdomain');
-    }
+
+  if (!userId) {
+    throw new ApiError(401, '需要登入才能釋放子網域');
   }
-  
-  const released = await releaseStaleSubdomain(env, subdomain, userId);
-  
-  if (!released) {
-    throw new ApiError(400, 'Subdomain cannot be released. It may be active or not exist.');
+
+  // Try to release - this function handles all logic and returns error reason
+  const result = await releaseStaleSubdomain(env, subdomain, userId);
+
+  if (!result.success) {
+    throw new ApiError(403, result.reason || '無法釋放此子網域');
   }
-  
+
   return new Response(JSON.stringify({
     success: true,
     subdomain,
-    message: 'Subdomain released successfully'
+    message: '子網域釋放成功'
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' }
@@ -110,17 +107,17 @@ export async function handleSubdomainRelease(
 
 function getAvailabilityMessage(result: SubdomainCheckResult): string {
   if (result.available) {
-    return 'Subdomain is available';
+    return '子網域可以使用';
   }
-  
+
   switch (result.reason) {
     case 'reserved':
-      return 'This subdomain is reserved and cannot be used';
+      return '此子網域已保留，無法使用';
     case 'in_use':
-      return 'This subdomain is currently in use by an active deployment';
+      return '此子網域已被其他部署使用中';
     case 'stale_failed':
-      return 'This subdomain was used by a failed deployment and can be released';
+      return '此子網域之前部署失敗，可以釋放並使用';
     default:
-      return 'Subdomain is not available';
+      return '子網域無法使用';
   }
 }

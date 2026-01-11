@@ -64,7 +64,7 @@ export const tw: Translation = {
 
     // 設定
     configureTitle: '最後一步',
-    configureSubtitle: '填入你的 subdomain 和 API Key',
+    configureSubtitle: '填入子網域和 API 金鑰',
     deployingTitle: '正在發布你的應用程式',
     deployingSubtitle: '通常需要 2-3 分鐘',
 
