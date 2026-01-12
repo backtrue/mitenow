@@ -15,8 +15,8 @@ export interface Env {
   // Cloudflare D1 Database
   DB: D1Database;
 
-  // Static Assets (for main site)
-  ASSETS: Fetcher;
+  // Cloudflare Pages URL
+  PAGES_URL?: string;
 
   // GCP Configuration
   GCP_PROJECT_ID: string;

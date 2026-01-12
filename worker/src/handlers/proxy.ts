@@ -25,38 +25,45 @@ export async function handleWildcardProxy(
 ): Promise<Response> {
   const url = new URL(request.url);
   const hostname = url.hostname;
-  
+
   // Extract subdomain from hostname
   // e.g., "my-app.mite.now" -> "my-app"
   const parts = hostname.split('.');
   const subdomain = parts[0];
-  
+
   // Skip main site and reserved subdomains
   const reservedSubdomains = ['www', 'api', 'mite', 'app', 'admin', 'static'];
   if (reservedSubdomains.includes(subdomain)) {
-    // Serve static assets for main site
-    return env.ASSETS.fetch(request);
+    // Serve static assets from Cloudflare Pages
+    const pagesUrl = env.PAGES_URL || 'https://mite-3r7.pages.dev';
+    const pagesRequest = new Request(pagesUrl + url.pathname + url.search, {
+      method: request.method,
+      headers: request.headers,
+      body: request.body,
+      redirect: 'manual'
+    });
+    return fetch(pagesRequest);
   }
-  
+
   // Get routing info from KV
   const routingInfo = await getRoutingInfo(env, subdomain);
-  
+
   if (!routingInfo) {
     // Check if app exists but is not active
     const appRecord = await getAppBySubdomain(env, subdomain);
-    
+
     if (appRecord) {
       return createStatusPage(appRecord.status, subdomain, appRecord.error);
     }
-    
+
     return createNotFoundPage(subdomain);
   }
-  
+
   // Build proxied request
   const targetUrl = new URL(routingInfo.targetUrl);
   targetUrl.pathname = url.pathname;
   targetUrl.search = url.search;
-  
+
   // Create new headers, filtering hop-by-hop headers
   const proxyHeaders = new Headers();
   for (const [key, value] of request.headers) {
@@ -64,13 +71,13 @@ export async function handleWildcardProxy(
       proxyHeaders.set(key, value);
     }
   }
-  
+
   // Set forwarded headers
   proxyHeaders.set('X-Forwarded-Host', hostname);
   proxyHeaders.set('X-Forwarded-Proto', url.protocol.replace(':', ''));
   proxyHeaders.set('X-Real-IP', request.headers.get('CF-Connecting-IP') || '');
   proxyHeaders.set('X-Mite-App-Id', routingInfo.appId);
-  
+
   // Create proxied request
   const proxyRequest = new Request(targetUrl.toString(), {
     method: request.method,
@@ -78,27 +85,27 @@ export async function handleWildcardProxy(
     body: request.body,
     redirect: 'manual'
   });
-  
+
   try {
     // Fetch from Cloud Run
     const response = await fetch(proxyRequest);
-    
+
     // Create response with modified headers
     const responseHeaders = new Headers(response.headers);
-    
+
     // Remove Cloud Run specific headers
     responseHeaders.delete('x-cloud-trace-context');
     responseHeaders.delete('x-served-by');
-    
+
     // Add CORS headers if needed
     responseHeaders.set('X-Powered-By', 'mite.now');
-    
+
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
       headers: responseHeaders
     });
-    
+
   } catch (error) {
     console.error(`Proxy error for ${subdomain}:`, error);
     return createErrorPage(subdomain);
@@ -145,9 +152,9 @@ function createStatusPage(
       color: '#6b7280'
     }
   };
-  
+
   const info = statusMessages[status] || statusMessages.pending;
-  
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -216,7 +223,7 @@ function createStatusPage(
   </div>
 </body>
 </html>`;
-  
+
   return new Response(html, {
     status: status === 'failed' ? 503 : 202,
     headers: {
@@ -273,7 +280,7 @@ function createNotFoundPage(subdomain: string): Response {
   </div>
 </body>
 </html>`;
-  
+
   return new Response(html, {
     status: 404,
     headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -328,7 +335,7 @@ function createErrorPage(subdomain: string): Response {
   </div>
 </body>
 </html>`;
-  
+
   return new Response(html, {
     status: 503,
     headers: {

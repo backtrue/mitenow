@@ -38,8 +38,7 @@ database_id = "d571adef-dd2b-4a70-8d2f-c13c1fc345e0"
 # ============================================
 # Static Assets (for main site)
 # ============================================
-# [site]
-# bucket = "../frontend/out"  # Next.js static export
+# Pages project is accessed via direct fetch to the Pages URL
 
 # ============================================
 # Environment Variables (non-secret)
@@ -48,6 +47,7 @@ database_id = "d571adef-dd2b-4a70-8d2f-c13c1fc345e0"
 GCP_REGION = "asia-east1"
 ALLOWED_ORIGINS = "https://mite.now,https://www.mite.now,http://localhost:3000"
 ENVIRONMENT = "production"
+PAGES_URL = "https://mite-3r7.pages.dev"  # Cloudflare Pages deployment URL
 
 # ============================================
 # Secrets (set via `wrangler secret put`)
